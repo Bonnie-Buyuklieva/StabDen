@@ -20,9 +20,7 @@ library(kableExtra)
 
 
 ```{r}
-#filename: 1_StabDen_SpaghettiPlot_.Rmd
-#versionDate <- '2020-02-20'
-versionDate <- '2020-03-29'
+versionDate <- '2020-04-02'
 ```
 
 
@@ -54,7 +52,7 @@ all_years$year <- as.factor(all_years$year)
 ```
 
 
-```{r}
+```{r dt}
 #Create percents relative to lad
 count <- aggregate(cbind(LADpercent=count) ~ lad11cd + year, data = all_years, FUN = sum)
 all_years <- merge(x = all_years, y = count,
@@ -81,108 +79,9 @@ all_years$year <- as.factor(all_years$year)
 ```
 
 
-```{r}
-#baseline works
-flattend1 <- aggregate(  YRpercent ~ stability + rdl_psd + year , data = all_years, FUN = sum)
-
-#baseline works
-ggplot(flattend1, aes(x = year, stratum = rdl_psd,alluvium = rdl_psd, y = YRpercent)) +
-  geom_flow(aes(fill = rdl_psd), colour='white', width = 0) +
-  scale_fill_manual(values = lab_colour$HexColur, name='Class Legend') +
-  labs(y = "Percent of Given Class for Each Year") +
-  theme_classic() +
-  scale_linetype_manual(values = c("blank", "solid")) +
-  ggrepel::geom_text_repel(
-    aes(label = ifelse(as.numeric(year) == 1, as.character(round(YRpercent,1)), NA)),
-    stat = "stratum", size = 4, direction = "y", nudge_x = -.5
-  ) +
-  ggrepel::geom_text_repel(
-    aes(label = ifelse(as.numeric(year) == 5, as.character(round(YRpercent,1)), NA)),
-    stat = "stratum", size = 4, direction = "y", nudge_x = .5
-  )+
-  theme(legend.position = "none")
-```
-
-
-```{r}
+```{r fig0}
 cc = c( '#ff0000','#808080','#4000ff','#009499')
-#baseline works
-flattend1 <- aggregate(  YRpercent ~ stability + rdl_psd + year , data = all_years, FUN = sum)
 
-#baseline works
-ggplot(flattend1, aes(x = year, stratum = rdl_psd,alluvium = rdl_psd, y = YRpercent)) +
-  geom_flow(aes(fill = rdl_psd), colour='white', width = 0) +
-  scale_fill_manual(values = lab_colour$HexColur, name='Class Legend') +
-  labs(y = "Percent of Given Class for Each Year") +
-  theme_classic() +
-  scale_linetype_manual(values = c("blank", "solid")) +
-  ggrepel::geom_label_repel(
-    aes(label = ifelse(as.numeric(year) == 1 & YRpercent >2, paste(as.character(round(YRpercent,1)),'%'), NA)),
-    stat = "stratum", size = 4, direction = "y", nudge_x = -.5
-  ) +
-  ggrepel::geom_label_repel(
-    aes(label = ifelse(as.numeric(year) == 5 & YRpercent >2, paste(as.character(round(YRpercent,1)),'%'), NA)),
-    stat = "stratum", size = 4, direction = "y", nudge_x = .5
-  )+
-  theme(legend.position = "none")
-```
-
-```{r}
-flattend1 <- aggregate(  YRpercent ~  rdl_psd + stability+ year, data = all_years, FUN = sum)
-
-ggplot(flattend1, aes(x = year, stratum = rdl_psd,alluvium = rdl_psd, y = YRpercent)) +
-  geom_flow(aes(fill = rdl_psd), colour='black', width = 0) +
-  geom_lode(fill = NA, colour = NA)+ 
-  scale_fill_manual(values = lab_colour$HexColur, name='Class Legend') +
-  labs(title = "Stability and Density: England and Wales") +
-  theme_classic() +
-  geom_stratum(fill = NA, colour = NA) +
-  ggrepel::geom_text_repel(
-    aes(label = ifelse(as.numeric(year) == 1, as.character(round(YRpercent,1)), NA)),
-    stat = "stratum", size = 3, direction = "y", nudge_x = -.3
-  ) +
-  ggrepel::geom_text_repel(
-    aes(label = ifelse(as.numeric(year) == 5, as.character(round(YRpercent,1)), NA)),
-    stat = "stratum", size = 3, direction = "y", nudge_x = .3
-  )+
-  facet_wrap(~stability, ncol=2, scales="free")+ 
-  theme(legend.position = "none")
-```
-
-
-
-
-```{r}
-#baseline works
-flattend1 <- aggregate(  YRpercent ~ density + rdl_psd + year , data = all_years, FUN = sum)
-flattend <- aggregate(  YRpercent ~ density + year , data = all_years, FUN = sum)
-#transcince first
-  ggplot(data = flattend,
-       aes(x = year, stratum = density, alluvium = YRpercent,
-           y = YRpercent, label = round(YRpercent, 1)), fill = NA )+
-  geom_stratum(fill = NA, colour = NA) +
-  stat_stratum(geom = "errorbar") +
-  geom_label(
-    aes(label = ifelse(as.numeric(year) == 1, paste(as.character(round(YRpercent,1)),'%'), NA)),
-    #stat = "stratum", size = 3, direction = "y", nudge_x = -.3,color = "white", fill= rep(cc,5)) +
-    stat = "stratum", size = 3, direction = "y", nudge_x = -.3,color = "black") +
-  geom_label(
-    aes(label = ifelse(as.numeric(year) == 5, paste(as.character(round(YRpercent,1)),'%'),NA)), 
-    #stat = "stratum", size = 3, direction = "y", nudge_x = .3,color = "white",  fill= rep(cc,5))+
-    stat = "stratum", size = 3, direction = "y", nudge_x = .3,color = "black") +
-  #flow diagrant starts here
-  geom_flow(data = flattend1, aes(x = year, alluvium = rdl_psd, y = YRpercent, fill = rdl_psd), colour='white', width = 0)+
-  scale_fill_manual(values = lab_colour$HexColur, name='Class Legend') +
-  labs(y = "Percent of Given Class for Each Year") +
-  theme_minimal()+
-  theme(legend.position = "none")
-```
-
-
-
-
-
-```{r}
 #baseline works
 flattend1 <- aggregate(  YRpercent ~ stability + rdl_psd + year , data = all_years, FUN = sum)
 flattend <- aggregate(  YRpercent ~ stability + year , data = all_years, FUN = sum)
@@ -210,8 +109,31 @@ flattend <- aggregate(  YRpercent ~ stability + year , data = all_years, FUN = s
 
 
 
+```{r fig1}
+flattend1 <- aggregate(  YRpercent ~  rdl_psd + stability+ year, data = all_years, FUN = sum)
+
+ggplot(flattend1, aes(x = year, stratum = rdl_psd,alluvium = rdl_psd, y = YRpercent)) +
+  geom_flow(aes(fill = rdl_psd), colour='black', width = 0) +
+  geom_lode(fill = NA, colour = NA)+ 
+  scale_fill_manual(values = lab_colour$HexColur, name='Class Legend') +
+  labs(title = "Stability and Density: England and Wales") +
+  theme_classic() +
+  geom_stratum(fill = NA, colour = NA) +
+  ggrepel::geom_text_repel(
+    aes(label = ifelse(as.numeric(year) == 1, as.character(round(YRpercent,1)), NA)),
+    stat = "stratum", size = 3, direction = "y", nudge_x = -.3
+  ) +
+  ggrepel::geom_text_repel(
+    aes(label = ifelse(as.numeric(year) == 5, as.character(round(YRpercent,1)), NA)),
+    stat = "stratum", size = 3, direction = "y", nudge_x = .3
+  )+
+  facet_wrap(~stability, ncol=2, scales="free")+ 
+  theme(legend.position = "none")
+```
+
+
 # Here is the breakdown of the same labels, by region       
-```{r, fig.height = 10.2, fig.width = 6.3}
+```{r fig2-1Regions, fig.height = 10.2, fig.width = 6.3}
 flattend <- aggregate(  RGNpercent ~  stability + year + rgn11nm, data = all_years, FUN = sum)
 flattend1 <- aggregate(  RGNpercent ~  stability + rdl_psd + year + rgn11nm, data = all_years, FUN = sum)
 
@@ -240,7 +162,7 @@ subset <- rgn_groups[rgn_groups$group_Region=='South-East',]$region
 
 ```
 
-```{r, fig.height = 10.2, fig.width = 6.3}
+```{r fig2-2Regions, fig.height = 10.2, fig.width = 6.3}
 subset <- rgn_groups[rgn_groups$group=='North-West',]$region
  ggplot(data = flattend[flattend$rgn11nm %in% subset,],
        aes(x = year, stratum = stability, alluvium = RGNpercent,
@@ -266,11 +188,9 @@ subset <- rgn_groups[rgn_groups$group=='North-West',]$region
 ```
 
 
-
-
 # Here is the breakdown of the same labels, by London SubRegion     
 
-```{r}
+```{r dtLND}
 lnd <- droplevels(all_years[all_years$rgn11nm == 'London',])
 lnd <- merge(x = lnd, y = lnd_groups,
              by.x = 'lad11nm',
@@ -284,7 +204,7 @@ lnd <- merge(x = lnd, y = count,
 lnd$LNDSubpercent <- lnd$count/lnd$LNDSubpercent*100
 ```
 
-```{r LND, fig.height = 10.2, fig.width = 6.3}
+```{r fig3-LND, fig.height = 10.2, fig.width = 6.3}
 flattend <- aggregate(  LNDSubpercent ~ stability + year + group_LND, data = lnd, FUN = sum)
 flattend1 <- aggregate(  LNDSubpercent ~ stability + rdl_psd + year + group_LND, data = lnd, FUN = sum)
 
@@ -313,4 +233,32 @@ ggplot(data = flattend,
 
 ```
 
+
+-------------------------------------------Extra
+
+```{r potential}
+#baseline works
+flattend1 <- aggregate(  YRpercent ~ density + rdl_psd + year , data = all_years, FUN = sum)
+flattend <- aggregate(  YRpercent ~ density + year , data = all_years, FUN = sum)
+#transcince first
+  ggplot(data = flattend,
+       aes(x = year, stratum = density, alluvium = YRpercent,
+           y = YRpercent, label = round(YRpercent, 1)), fill = NA )+
+  geom_stratum(fill = NA, colour = NA) +
+  stat_stratum(geom = "errorbar") +
+  geom_label(
+    aes(label = ifelse(as.numeric(year) == 1, paste(as.character(round(YRpercent,1)),'%'), NA)),
+    #stat = "stratum", size = 3, direction = "y", nudge_x = -.3,color = "white", fill= rep(cc,5)) +
+    stat = "stratum", size = 3, direction = "y", nudge_x = -.3,color = "black") +
+  geom_label(
+    aes(label = ifelse(as.numeric(year) == 5, paste(as.character(round(YRpercent,1)),'%'),NA)), 
+    #stat = "stratum", size = 3, direction = "y", nudge_x = .3,color = "white",  fill= rep(cc,5))+
+    stat = "stratum", size = 3, direction = "y", nudge_x = .3,color = "black") +
+  #flow diagrant starts here
+  geom_flow(data = flattend1, aes(x = year, alluvium = rdl_psd, y = YRpercent, fill = rdl_psd), colour='white', width = 0)+
+  scale_fill_manual(values = lab_colour$HexColur, name='Class Legend') +
+  labs(y = "Percent of Given Class for Each Year") +
+  theme_minimal()+
+  theme(legend.position = "none")
+```
 
