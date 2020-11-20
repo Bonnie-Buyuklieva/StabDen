@@ -12,23 +12,51 @@ library(ggplot2)
 library(ggmosaic)
 library(ggalluvial)
 library(reshape2)
-
+library(dplyr)
 
 library(knitr)
 library(kableExtra)
 ```
 
+```{r}
+dt <- read.csv2(paste0("../__results/_derived_data/long_dt_all_years_2020-11-14.csv"), header = T, sep = ",", fileEncoding = "UTF-8-BOM")
+```
 
 ```{r}
-versionDate <- '2020-04-02'
+all_years <- dt %>%
+  group_by(year, 
+           rgn11cd, rgn11nm,
+           lad11cd, lad11nm,
+           rdl_psd,
+           rdl_pd, rdl_m1_sp) %>%
+  summarise(count = n())
+
+#ensure year is a factor
+all_years$year <- as.factor(all_years$year)
+droplevels(all_years)
+
+
+#subset(all_years, rdl_psd %in% c('5_V.High-Fix*2_Low','5_V.High-Fix*3_Average'))
+drop <- c(which(all_years$rdl_psd == '5_V.High-Fix*2_Low'),
+          which(all_years$rdl_psd == '5_V.High-Fix*3_Average'))
+
+all_years <- all_years[-drop,]
 ```
 
 
-```{r}
+```{r oldDt}
 #all_years <- read.csv2("C:/Users/billi/Dropbox/_PhD/Data/LS_ONS/Geographic LS Lookups/Historic Attributes/_Final_20200126/_code/labels_across_all_years.csv", header = T, sep = ",", fileEncoding = "UTF-8-BOM")
 
 all_years <- read.csv2(paste0("../__results/_derived_data/Labels_across_all_years_",versionDate,".csv"), header = T, sep = ",", fileEncoding = "UTF-8-BOM")
 
+split <- data.frame(do.call('rbind', strsplit(as.character(all_years$rdl_psd),'*',fixed=TRUE)))
+names(split) <- c('stability','density')
+all_years <- cbind(all_years, split)
+
+```
+
+
+```{r}
 lab_colour <- read.csv2("./PSD_colour_scheme.csv", header = T, sep = ",", fileEncoding = "UTF-8-BOM")
 lab_colour$HexColur <- as.character(lab_colour$HexColur)
 lnd_groups <- read.csv2("./London_Group_LUT.csv", header = T, sep = ",", fileEncoding = "UTF-8-BOM")
@@ -36,14 +64,6 @@ rgn_groups <- read.csv2("./Regions_Group_LUT.csv", header = T, sep = ",", fileEn
 cc = c( '#ff0000','#808080','#4000ff','#009499')
 ```
 
-
-```{r}
-split <- data.frame(do.call('rbind', strsplit(as.character(all_years$rdl_psd),'*',fixed=TRUE)))
-names(split) <- c('stability','density')
-all_years <- cbind(all_years, split)
-#ensure year is a factor
-all_years$year <- as.factor(all_years$year)
-```
 
 ```{r}
 #columns for plotting
@@ -74,17 +94,24 @@ all_years <- merge(x = all_years, y = count,
            all.x = T) 
 all_years$YRpercent <- all_years$count/all_years$YRpercent*100
 
-#ensure year is a factor
-all_years$year <- as.factor(all_years$year)
+
+#rename for tidyness
+all_years <- all_years %>%
+  rename(
+  density = rdl_pd,
+  stability = rdl_m1_sp
+  )
+all_years <- droplevels(all_years)
 ```
 
 
 ```{r fig0}
-cc = c( '#ff0000','#808080','#4000ff','#009499')
-
 #baseline works
 flattend1 <- aggregate(  YRpercent ~ stability + rdl_psd + year , data = all_years, FUN = sum)
 flattend <- aggregate(  YRpercent ~ stability + year , data = all_years, FUN = sum)
+
+
+
 #transcince first
   ggplot(data = flattend,
        aes(x = year, stratum = stability, alluvium = YRpercent,
