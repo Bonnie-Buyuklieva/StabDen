@@ -7,7 +7,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = T)
+knitr::opts_chunk$set(echo = F)
 library(ggplot2)
 library(ggmosaic)
 library(ggalluvial)
@@ -44,16 +44,6 @@ all_years <- all_years[-drop,]
 ```
 
 
-```{r oldDt}
-#all_years <- read.csv2("C:/Users/billi/Dropbox/_PhD/Data/LS_ONS/Geographic LS Lookups/Historic Attributes/_Final_20200126/_code/labels_across_all_years.csv", header = T, sep = ",", fileEncoding = "UTF-8-BOM")
-
-all_years <- read.csv2(paste0("../__results/_derived_data/Labels_across_all_years_",versionDate,".csv"), header = T, sep = ",", fileEncoding = "UTF-8-BOM")
-
-split <- data.frame(do.call('rbind', strsplit(as.character(all_years$rdl_psd),'*',fixed=TRUE)))
-names(split) <- c('stability','density')
-all_years <- cbind(all_years, split)
-
-```
 
 
 ```{r}
