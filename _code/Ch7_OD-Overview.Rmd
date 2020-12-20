@@ -1,0 +1,182 @@
+---
+title: "Overview"
+author: "Boyana Buyuklieva"
+date: "December 15, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+
+interStabDen_movements <- function(stabden_df){
+results <- list()
+  
+now <- Sys.time()
+overview <- stabden_df%>%
+  group_by(O, D) %>%
+  summarise( w_PSD = ifelse( (O_Den == D_Den) && (O_Stab == D_Stab), sum(Frequency, na.rm = T), NA),
+             d_Den = ifelse( (O_Den != D_Den) && (O_Stab == D_Stab), sum(Frequency, na.rm = T), NA),
+             d_Stab = ifelse( (O_Den == D_Den) && (O_Stab != D_Stab), sum(Frequency, na.rm = T), NA),
+             d_PSD = ifelse( (O_Den != D_Den) && (O_Stab != D_Stab), sum(Frequency, na.rm = T), NA),
+             Frequency = Frequency) 
+time <- difftime(Sys.time(), now)
+
+tmp <- colSums(overview [,c('w_PSD','d_Den','d_Stab','d_PSD','Frequency')], na.rm = T)
+
+precent <- tmp/tmp['Frequency']
+
+results[['counts']] <- tmp
+results[['precent']] <- precent
+}
+```
+
+
+
+
+
+```{r,cache=T}
+load("./_derived-data/flows_stabden11.RData")
+load("./_derived-data/flows_stabden91.RData")
+```
+
+Class, is defined based on in-migration - moves into the destination node. 
+What percent of moves came from a place 
+
+
+
+Denominator = LAD-PSD, N = number of LAD-PSDs
+w_LAD) What percent are within the smallest area? (PSD_O = PSD_D, )
+
+A) What percent move from one to a different stability class? (O_Stab != D_Stab)
+  A1) Different stab, same LAD
+  A2) Different stab, different LAD
+  
+B) What percent move from one to a different density class? (O_Den != D_Den)
+  B1) Different stab, same LAD
+  B2) Different stab, different LAD
+  
+w_PSD) What percent move to the same stability-density class somewhere else?
+
+
+
+C1) Of these what percent are within the same stabden class in the same region?
+C2) Of these what percent are within the same stabden class in different region?
+
+
+```{r}
+interStabDen_movements <- function(stabden_df){
+
+now <- Sys.time()
+overview91 <- stabden91 %>%
+  group_by(O, D) %>%
+  summarise( w_PSD = ifelse( (O_Den == D_Den) && (O_Stab == D_Stab), sum(Frequency, na.rm = T), NA),
+             A = ifelse( (O_Den != D_Den) && (O_Stab == D_Stab), sum(Frequency, na.rm = T), NA),
+             B = ifelse( (O_Den == D_Den) && (O_Stab != D_Stab), sum(Frequency, na.rm = T), NA),
+             C = ifelse( (O_Den != D_Den) && (O_Stab != D_Stab), sum(Frequency, na.rm = T), NA),
+             Frequency = Frequency) 
+difftime(Sys.time(), now)
+
+tmp91 <- colSums(overview91 [,c('w_PSD','A','B','C','Frequency')], na.rm = T)
+}
+```
+
+
+
+
+
+
+
+
+
+
+```{r}
+dt <- head(stabden11, 30)
+#write.csv(dt,'./dt.csv')
+
+bigger <- ifelse(length(levels(stabden11$O))> length(levels(stabden11$D)),
+                 'O',
+                 'D' )
+smaller <- ifelse(bigger == 'O', 'D', 'O')
+
+dt[,smaller] <- factor(dt[,smaller], levels=levels(dt[,bigger]))
+
+
+
+
+table_edges <- dt %>%
+  group_by(O, D, O_LAD, D_LAD) %>%
+  summarise( w_LADPSD = ifelse( O == D, sum(Frequency, na.rm = T), NA ),
+             w_PSD = ifelse( (O_Den == D_Den) && (O_Stab == D_Stab), sum(Frequency, na.rm = T), NA),
+             A = ifelse( O_Stab == D_Stab, sum(Frequency, na.rm = T), NA),
+             B = ifelse( O_Den == D_Den, sum(Frequency, na.rm = T), NA),
+             Frequency = Frequency)
+
+
+
+```
+
+```{r}
+dt <- head(stabden11, 30)
+
+
+#sum the table ******************
+now <- Sys.time()
+overview91 <- stabden91 %>%
+    group_by(O, D) %>%
+  summarise( w_PSD = ifelse( (O_Den == D_Den) && (O_Stab == D_Stab), sum(Frequency, na.rm = T), NA),
+             A = ifelse( (O_Den != D_Den) && (O_Stab == D_Stab), sum(Frequency, na.rm = T), NA),
+             B = ifelse( (O_Den == D_Den) && (O_Stab != D_Stab), sum(Frequency, na.rm = T), NA),
+             C = ifelse( (O_Den != D_Den) && (O_Stab != D_Stab), sum(Frequency, na.rm = T), NA),
+             Frequency = Frequency)
+difftime(Sys.time(), now)
+
+tmp91 <- colSums(overview91 [,c('w_PSD','A','B','Frequency')], na.rm = T)
+
+#w_PSD, A, B = Frequency
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+table_edges <-   dt %>%
+  group_by(D_LAD) %>%
+  mutate( IM_LAD = sum(Frequency, na.rm = T) )%>%
+  ungroup() %>% #like a reseset
+  group_by(O_LAD) %>%
+  mutate( OM_LAD = sum(Frequency, na.rm = T) )
+
+
+table_nodes <- table_edges[]
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
