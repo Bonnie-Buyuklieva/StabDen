@@ -1,0 +1,366 @@
+---
+title: "Map OD to Classes"
+author: "Boyana Buyuklieva"
+date: "December 15, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(foreign)
+library(readr)
+library(plyr)
+library(dplyr)
+library(stringr)
+```
+
+```{r, cache=T}
+flow81 <- read.csv("./_data/GB_Wards_1991--N10933.csv", header=T)
+LUT81 <- read.dbf("./_data/F1981.dbf")
+
+x_codes_1 <- read_csv("./_data/Wards__April_1991__Names_and_Codes_in_the_United_Kingdom.csv")
+x_codes_1 <- x_codes_1[,c("WD91CD","WD91CDC","WD91CDO")]
+names(x_codes_1 ) <- c("WD91CD","_WD91CDC","_WD91CDO")
+
+x_codes_2 <- read_csv("./_data/LUT_Ward_1981_to_Ward_1991__April_1991__Lookup_in_England_and_Wales.csv")
+
+x_codes_3 <- read_csv("./_data/BHS_LUT.csv")
+
+
+
+flow91 <- read_csv("./_data/Flows_1991_by1991wards.csv")
+LUT91 <- read.dbf("./_data/F1991.dbf")
+
+
+flow01 <- read_csv("./_data/SMS_2001_wicid_output_OAs_Destination Pair.csv", skip = 3,  col_names = T)
+LUT01 <- read.dbf("./_data/F2001.dbf")
+
+flow11 <- read_csv("./_data/2011/MF01UK_oa_all_v5/mf01uk_oa_all_v5.csv",  col_names = FALSE)
+LUT11 <- read.dbf("./_data/F2011.dbf")
+```
+
+## 2011
+
+```{r}
+flow<- flow11
+LUT <- LUT11
+
+#Process the StabDen LUT
+LUT$zone_id <- LUT$oa11cd
+LUT <- LUT[,c('zone_id','rdl_PSD','lad11nm','rgn11nm')]
+
+LUT$LUT <- paste(LUT$rdl_PSD, "*", LUT$lad11nm, "*", LUT$rgn11nm)
+LUT$LUT <- gsub(" ", "", LUT$LUT, fixed = TRUE)
+
+
+#sum up the year specific breakdowns 
+names(flow) <- c("O","D","Count")
+simple_flow <- cbind(flow$O,flow$D, flow$Count)
+backup <- simple_flow
+simple_flow <- backup 
+   
+#Replace the zones with the StabDen class
+#https://stackoverflow.com/questions/7547597/dictionary-style-replace-multiple-items
+map = setNames(LUT$LUT,LUT$zone_id)
+simple_flow[,1]<- map[simple_flow[,1]]
+simple_flow[,2]<- map[simple_flow[,2]]
+View(head(simple_flow))
+
+simple_flow_mat <- simple_flow
+rm(simple_flow)
+
+simple_flow <- data.frame()
+simple_flow <- as.data.frame(simple_flow_mat[,c(1,2)] ) 
+simple_flow$Count <- as.data.frame(as.numeric(simple_flow_mat[,3]))
+simple_flow$Count <- simple_flow$Count$`as.numeric(simple_flow_mat[, 3])`
+
+simple_flow$Count <- as.numeric(simple_flow$Count)
+names(simple_flow ) <- c("O","D","Count")
+
+
+
+#Drop all O & D that are not in EW
+simple_flow <- simple_flow[which(!is.na(simple_flow$O)),]
+simple_flow <- simple_flow[which(!is.na(simple_flow$D)),]
+
+
+
+#sum the table ******************
+now <- Sys.time()
+
+  stabden<- simple_flow %>% 
+  group_by(O,D) %>% 
+  summarise(Frequency = sum(Count,na.rm = T))
+
+difftime(Sys.time(), now)
+stabden <- as.data.frame(stabden)
+
+
+
+
+#Clean up the data frame 
+a <- as.data.frame(str_split_fixed(as.character(stabden$O), pattern = "\\*", n = Inf))
+names(a) <- c('O_Stab', 'O_Den', 'O_LAD','O_RG')
+stabden <- cbind(stabden,a)
+
+a <- as.data.frame(str_split_fixed(as.character(stabden$D), pattern = "\\*", n = Inf))
+names(a) <- c('D_Stab', 'D_Den', 'D_LAD','D_RG')
+stabden <- cbind(stabden,a)
+rm(a)
+
+
+#assign by year
+stabden11<-stabden
+rm(stabden)
+
+#Sanity check
+sum(simple_flow$Count, na.rm = T)
+sum(stabden11$Frequency, na.rm = T)
+#save(stabden11, file = "./_derived-data/flows_stabden11.RData")
+#160275806
+```
+
+
+## 2001
+
+```{r}
+flow<- flow01
+LUT <- LUT01
+
+#Process the StabDen LUT
+LUT$zone_id <- LUT$oa01cdo
+LUT <- LUT[,c('zone_id','rdl_PSD','lad11nm','rgn11nm')]
+
+LUT$LUT <- paste(LUT$rdl_PSD, "*", LUT$lad11nm, "*", LUT$rgn11nm)
+LUT$LUT <- gsub(" ", "", LUT$LUT, fixed = TRUE)
+
+
+#sum up the year specific breakdowns 
+names(flow) <- c("O","D","Count")
+simple_flow <- cbind(flow$O,flow$D, flow$Count)
+
+
+#Replace the zones with the StabDen class
+#https://stackoverflow.com/questions/7547597/dictionary-style-replace-multiple-items
+map = setNames(LUT$LUT,LUT$zone_id)
+simple_flow[,1]<- map[simple_flow[,1]]
+simple_flow[,2]<- map[simple_flow[,2]]
+
+simple_flow_mat <- simple_flow
+rm(simple_flow)
+
+simple_flow <- data.frame()
+simple_flow <- as.data.frame(simple_flow_mat[,c(1,2)] ) 
+simple_flow$Count <- as.data.frame(as.numeric(simple_flow_mat[,3]))
+simple_flow$Count <- simple_flow$Count$`as.numeric(simple_flow_mat[, 3])`
+
+simple_flow$Count <- as.numeric(simple_flow$Count)
+names(simple_flow ) <- c("O","D","Count")
+
+
+#Drop all O & D that are not in EW
+simple_flow <- simple_flow[which(!is.na(simple_flow$O)),]
+simple_flow <- simple_flow[which(!is.na(simple_flow$D)),]
+
+
+
+#sum the table ******************
+now <- Sys.time()
+
+  stabden<- simple_flow %>% 
+  group_by(O,D) %>% 
+  summarise(Frequency = sum(Count,na.rm = T) )
+
+difftime(Sys.time(), now)
+stabden <- as.data.frame(stabden)
+#Sanity check
+#sum(simple_flow$Count, na.rm = T)
+#sum(stabden11$Frequency, na.rm = T)
+
+
+
+#Clean up the data frame 
+a <- as.data.frame(str_split_fixed(as.character(stabden$O), pattern = "\\*", n = Inf))
+names(a) <- c('O_Stab', 'O_Den', 'O_LAD','O_RG')
+stabden <- cbind(stabden,a)
+
+a <- as.data.frame(str_split_fixed(as.character(stabden$D), pattern = "\\*", n = Inf))
+names(a) <- c('D_Stab', 'D_Den', 'D_LAD','D_RG')
+stabden <- cbind(stabden,a)
+rm(a)
+
+
+#assign by year
+stabden01<-stabden
+rm(stabden)
+
+#save(stabden01, file = "./_derived-data/flows_stabden01.RData")
+```
+
+
+## 1991
+
+```{r}
+flow<- flow91
+LUT <- LUT91
+
+#Process the StabDen LUT
+LUT <- LUT[,c('zone_id','rdl_PSD','lad11nm','rgn11nm')]
+
+LUT$LUT <- paste(LUT$rdl_PSD, "*", LUT$lad11nm, "*", LUT$rgn11nm)
+LUT$LUT <- gsub(" ", "", LUT$LUT, fixed = TRUE)
+
+
+#sum up the year specific breakdowns 
+breakdowns <- c("Flow_1-15","Flow_16-29","Flow_30-44","Flow_44-PenAge","Flow_PenAge")
+simple_flow <- cbind(flow$O_91_WD91CD,flow$D_91_WD91CD, rowSums(flow[,breakdowns]))
+
+
+#Replace the zones with the StabDen class
+#https://stackoverflow.com/questions/7547597/dictionary-style-replace-multiple-items
+map = setNames(LUT$LUT,LUT$zone_id)
+simple_flow[,1]<- map[simple_flow[,1]]
+simple_flow[,2]<- map[simple_flow[,2]]
+
+simple_flow_mat <- simple_flow
+rm(simple_flow)
+
+simple_flow <- data.frame()
+simple_flow <- as.data.frame(simple_flow_mat[,c(1,2)] ) 
+simple_flow$Count <- as.data.frame(as.numeric(simple_flow_mat[,3]))
+simple_flow$Count <- simple_flow$Count$`as.numeric(simple_flow_mat[, 3])`
+
+simple_flow$Count <- as.numeric(simple_flow$Count)
+names(simple_flow ) <- c("O","D","Count")
+
+
+#Drop all O & D that are not in EW
+simple_flow <- simple_flow[which(!is.na(simple_flow$O)),]
+simple_flow <- simple_flow[which(!is.na(simple_flow$D)),]
+
+
+
+#sum the table ******************
+now <- Sys.time()
+
+  stabden<- simple_flow %>% 
+  group_by(O,D) %>% 
+  summarise(Frequency = sum(Count,na.rm = T))
+
+difftime(Sys.time(), now)
+stabden <- as.data.frame(stabden)
+#Sanity check
+#sum(simple_flow$Count, na.rm = T)
+#sum(stabden$Frequency, na.rm = T)
+
+
+
+#Clean up the data frame 
+a <- as.data.frame(str_split_fixed(as.character(stabden$O), pattern = "\\*", n = Inf))
+names(a) <- c('O_Stab', 'O_Den', 'O_LAD','O_RG')
+stabden <- cbind(stabden,a)
+
+a <- as.data.frame(str_split_fixed(as.character(stabden$D), pattern = "\\*", n = Inf))
+names(a) <- c('D_Stab', 'D_Den', 'D_LAD','D_RG')
+stabden <- cbind(stabden,a)
+rm(a)
+
+
+#assign by year
+stabden91<-stabden
+rm(stabden)
+
+#save(stabden91, file = "./_derived-data/flows_stabden91.RData")
+```
+
+
+
+## 1981
+ The flow exist only as 1991 old wards. I have 7 908 such places. The 1981 wards are 
+
+
+```{r}
+flow<- flow81
+#three col, OD list
+names(flow) <- c("Origins","X2","Destinations","X4","counts")
+simple_flow <-as.matrix(flow[,c("X2","X4","counts")])
+
+
+LUT <- LUT81
+levels(LUT$rdl_PSD)[levels(LUT$rdl_PSD)=="5_V.High-Fix*2_Low"] <- "3_Average-Fix*2_Low"#City of London fluke
+levels(LUT$rdl_PSD)[levels(LUT$rdl_PSD)=="5_V.High-Fix*3_Average"] <- "3_Average-Fix*3_Average"#City of London fluke
+LUT <- droplevels(LUT)
+LUT$LUT <- paste(LUT$rdl_PSD, "*", LUT$lad11nm, "*", LUT$rgn11nm)
+LUT$LUT <- gsub(" ", "", LUT$LUT, fixed = TRUE)
+
+LUT <- LUT[,c("name","label",'rdl_PSD','lad11nm','rgn11nm','LUT_WD91CD','LUT__WD91C','LUT')]
+LUT <- merge( LUT, x_codes_2,
+              by.x = 'label', by.y = 'WD81CD')
+LUT <- merge( LUT, x_codes_1,
+              by = "WD91CD")
+LUT <- merge( LUT, x_codes_3,
+              by =  "WD91CD",
+              by.y = "BSH_LUT_CD1")
+
+
+LUT$zone_id <- LUT$BSH_LUT_CD2
+
+
+
+
+#Replace the zones with the StabDen class
+#https://stackoverflow.com/questions/7547597/dictionary-style-replace-multiple-items
+map = setNames(LUT$LUT,LUT$zone_id)
+simple_flow[,1]<- map[simple_flow[,1]]
+simple_flow[,2]<- map[simple_flow[,2]]
+
+simple_flow_mat <- simple_flow
+rm(simple_flow)
+
+simple_flow <- data.frame()
+simple_flow <- as.data.frame(simple_flow_mat[,c(1,2)] ) 
+simple_flow$Count <- as.data.frame(as.numeric(simple_flow_mat[,3]))
+simple_flow$Count <- simple_flow$Count$`as.numeric(simple_flow_mat[, 3])`
+
+simple_flow$Count <- as.numeric(simple_flow$Count)
+names(simple_flow ) <- c("O","D","Count")
+
+
+#Drop all O & D that are not in EW
+simple_flow <- simple_flow[which(!is.na(simple_flow$O)),]
+simple_flow <- simple_flow[which(!is.na(simple_flow$D)),]
+
+
+
+#sum the table ******************
+now <- Sys.time()
+
+  stabden<- simple_flow %>% 
+  group_by(O,D) %>% 
+  summarise(Frequency = sum(Count,na.rm = T))
+
+difftime(Sys.time(), now)
+stabden <- as.data.frame(stabden)
+#Sanity check
+sum(simple_flow$Count, na.rm = T)
+sum(stabden$Frequency, na.rm = T)
+
+
+
+#Clean up the data frame 
+a <- as.data.frame(str_split_fixed(as.character(stabden$O), pattern = "\\*", n = Inf))
+names(a) <- c('O_Stab', 'O_Den', 'O_LAD','O_RG')
+stabden <- cbind(stabden,a)
+
+a <- as.data.frame(str_split_fixed(as.character(stabden$D), pattern = "\\*", n = Inf))
+names(a) <- c('D_Stab', 'D_Den', 'D_LAD','D_RG')
+stabden <- cbind(stabden,a)
+rm(a)
+
+
+#assign by year
+stabden81<-stabden
+rm(stabden)
+
+save(stabden81, file = "./_derived-data/flows_stabden81.RData")
+```
