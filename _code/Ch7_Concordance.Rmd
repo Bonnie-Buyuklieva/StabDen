@@ -33,16 +33,19 @@ yearly_data[['2011']] <- read.dbf("./_data/F2011.dbf")
 years <- c('1981','1991','2001','2011')
 
 output <- data.frame(
-  year = NA, 
-  level = NA,
-  sublevel = NA,
-  fisher.test = NA, 
-  cramerV = NA, 
-  GoodmanKruskalGamma = NA, 
-  KendallTauA = NA,
-  KendallTauB = NA,
-  GoodmanKruskalTau = NA,
-  Lambda = NA
+      year = NA, 
+      level = NA, 
+      sublevel = NA, 
+      chisq_Xsquared = NA, 
+      chisq_df = NA, 
+      chisq_pVal = NA, 
+      fisher = NA, 
+      cramerV = NA, 
+      GoodmanKruskalGamma = NA, 
+      KendallTauA = NA, 
+      KendallTauB = NA, 
+      GoodmanKruskalTau = NA, 
+      Lambda = NA 
 )
 output <- output[-1,]
 
@@ -58,13 +61,10 @@ for (year in years) {
     #    region = 'North East'
     df <- subset(PSD, PSD$rgn11nm == region)
     
-    ###### Contingecy table v2 - does not keep all factors:
-    ###### https://github.com/tidyverse/tidyr/issues/770
-    table <- pivot_wider(df,
-                     id_cols = c("rdl_m1_sp"),
-                     names_from = rdl_pd, 
-                     values_from = count,
-                     values_fill = list(values = 0)) #puts NAs for missing cell tabulations
+    df$rgn11nm <- NULL
+    table <-  spread(df,
+                     key = rdl_m1_sp, 
+                     value = count, fill = 0, drop = FALSE)
     
     
     table <- as.data.frame(table)
@@ -84,6 +84,7 @@ for (year in years) {
       chisq_Xsquared = chisq.test(table, simulate.p.value = TRUE)[[1]],
       chisq_df = chisq.test(table, simulate.p.value = TRUE)[[2]],
       chisq_pVal = chisq.test(table, simulate.p.value = TRUE)[[3]],
+      fisher = fisher.test(table, simulate.p.value=TRUE)[[1]],
       cramerV = cramerV(table)[[1]],
       GoodmanKruskalGamma = GoodmanKruskalGamma(table)[[1]],
       KendallTauA = KendallTauA(table)[[1]],
@@ -105,37 +106,36 @@ for (year in years) {
   group_by(rdl_m1_sp, rdl_pd ,lad11nm) %>%
   dplyr::summarise(count = n(),  .groups = 'drop')
   
+  
   for (LAD in unique(PSD$lad11nm)) {
-    #    region = 'North East'
+    #    LAD = 'Barnet'
     df <- subset(PSD, PSD$lad11nm == LAD)
+  
+    #correlations?
+    #https://stackoverflow.com/questions/10711395/spearman-correlation-and-ties
+    raw <- subset(yearly_data[[year]][,c('rd_m1_sp','rd_pd')], yearly_data[[year]]$lad11nm == LAD) 
+    corKendal <- cor.test(raw$rd_m1_sp, raw$rd_pd, method= "kendall")[["estimate"]]
+    corKendal_pVAl <- cor.test(raw$rd_m1_sp, raw$rd_pd, method= "kendall")[["p.value"]]
     
+    #simple linear - a bad idea, but anyway
+    model <-  summary(lm(rd_m1_sp ~ rd_pd, data = raw))
+    model_coeff <-  model[["coefficients"]][2] #rd_pd coeff
+    model_R2 <-  model[["r.squared"]]
+
     
-    ###### Contingecy table v2 - does not keep all factors:
-    ###### https://github.com/tidyverse/tidyr/issues/770
-    table <- pivot_wider(df,
-                     id_cols = c("rdl_m1_sp"),
-                     names_from = rdl_pd, 
-                     values_from = count,
-                     values_fill = list(values = 0)) #puts NAs for missing cell tabulations
-    
-    
-  ###### Contingecy table v2 - as expected  
-  df$lad11nm <- NULL
-  table1 <-  spread(df,
+    ###### Contingecy table v2 - as expected  
+    df$lad11nm <- NULL
+    table <-  spread(df,
                      key = rdl_m1_sp, 
                      value = count, fill = 0, drop = FALSE)
-  table <- table1
-  
-  
-  
-    
+
     table <- as.data.frame(table)
     table[is.na(table)] <- 0
     row.names(table) <- table$rdl_m1_sp
     table <- as.data.frame(table[,-1])
     table <- as.table(as.matrix(table))
     
-    print(region)
+    print(LAD)
     row <- cbind(
       year = year, 
       level = 'LAD',
@@ -146,6 +146,7 @@ for (year in years) {
       chisq_Xsquared = chisq.test(table, simulate.p.value = TRUE)[[1]],
       chisq_df = chisq.test(table, simulate.p.value = TRUE)[[2]],
       chisq_pVal = chisq.test(table, simulate.p.value = TRUE)[[3]],
+      fisher = fisher.test(table, simulate.p.value=TRUE)[[1]],
       cramerV = cramerV(table)[[1]],
       GoodmanKruskalGamma = GoodmanKruskalGamma(table)[[1]],
       KendallTauA = KendallTauA(table)[[1]],
