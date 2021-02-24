@@ -1,0 +1,206 @@
+---
+title: "Classification Association"
+author: "Boyana Buyuklieva"
+date: "February 23, 2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(foreign)
+library(readr)
+library(dplyr)
+library(tidyr)
+library(rcompanion)
+library(DescTools)
+
+#dandy revision: https://yatani.jp/teaching/doku.php?id=hcistats:chisquare
+```
+
+```{r cache = TRUE}
+yearly_data <- list()
+yearly_data[['1981']] <- read.dbf("./_data/F1981.dbf")
+yearly_data[['1991']] <- read.dbf("./_data/F1991.dbf")
+yearly_data[['2001']] <- read.dbf("./_data/F2001.dbf")
+yearly_data[['2011']] <- read.dbf("./_data/F2011.dbf")
+```
+
+```{r}
+years <- c('1981','1991','2001','2011')
+
+output <- data.frame(
+  year = NA, 
+  level = NA,
+  sublevel = NA,
+  fisher.test = NA, 
+  cramerV = NA, 
+  GoodmanKruskalGamma = NA, 
+  KendallTauA = NA,
+  KendallTauB = NA,
+  GoodmanKruskalTau = NA,
+  Lambda = NA
+)
+output <- output[-1,]
+
+
+
+for (year in years) {
+  # year = '1991'
+  PSD <- yearly_data[[year]] %>%
+  group_by(rdl_m1_sp, rdl_pd ,rgn11nm) %>%
+  dplyr::summarise(count = n(),  .groups = 'drop')
+  
+  for (region in unique(PSD$rgn11nm)) {
+    #    region = 'North East'
+    df <- subset(PSD, PSD$rgn11nm == region)
+    
+    ###### Contingecy table v2 - does not keep all factors:
+    ###### https://github.com/tidyverse/tidyr/issues/770
+    table <- pivot_wider(df,
+                     id_cols = c("rdl_m1_sp"),
+                     names_from = rdl_pd, 
+                     values_from = count,
+                     values_fill = list(values = 0)) #puts NAs for missing cell tabulations
+    
+    
+    table <- as.data.frame(table)
+    table[is.na(table)] <- 0
+    row.names(table) <- table$rdl_m1_sp
+    table <- as.data.frame(table[,-1])
+    table <- as.table(as.matrix(table))
+    
+    print(region)
+    row <- cbind(
+      year = year, 
+      level = 'region',
+      sublevel = region,
+      #https://stats.stackexchange.com/questions/81483/warning-in-r-chi-squared-approximation-may-be-incorrect
+      #http://rinterested.github.io/statistics/monte_carlo_chi_square.html
+      #https://stackoverflow.com/questions/52068531/how-work-the-p-value-simulation-in-the-chisq-test-and-fisher-test
+      chisq_Xsquared = chisq.test(table, simulate.p.value = TRUE)[[1]],
+      chisq_df = chisq.test(table, simulate.p.value = TRUE)[[2]],
+      chisq_pVal = chisq.test(table, simulate.p.value = TRUE)[[3]],
+      cramerV = cramerV(table)[[1]],
+      GoodmanKruskalGamma = GoodmanKruskalGamma(table)[[1]],
+      KendallTauA = KendallTauA(table)[[1]],
+      KendallTauB = KendallTauB(table)[[1]],
+      GoodmanKruskalTau = GoodmanKruskalTau(table)[[1]],
+      Lambda = Lambda(table)[[1]]
+    )
+    output <- rbind(output, row)
+  }
+}
+```
+
+
+
+```{r}
+for (year in years) {
+  # year = '1991'
+  PSD <- yearly_data[[year]] %>%
+  group_by(rdl_m1_sp, rdl_pd ,lad11nm) %>%
+  dplyr::summarise(count = n(),  .groups = 'drop')
+  
+  for (LAD in unique(PSD$lad11nm)) {
+    #    region = 'North East'
+    df <- subset(PSD, PSD$lad11nm == LAD)
+    
+    
+    ###### Contingecy table v2 - does not keep all factors:
+    ###### https://github.com/tidyverse/tidyr/issues/770
+    table <- pivot_wider(df,
+                     id_cols = c("rdl_m1_sp"),
+                     names_from = rdl_pd, 
+                     values_from = count,
+                     values_fill = list(values = 0)) #puts NAs for missing cell tabulations
+    
+    
+  ###### Contingecy table v2 - as expected  
+  df$lad11nm <- NULL
+  table1 <-  spread(df,
+                     key = rdl_m1_sp, 
+                     value = count, fill = 0, drop = FALSE)
+  table <- table1
+  
+  
+  
+    
+    table <- as.data.frame(table)
+    table[is.na(table)] <- 0
+    row.names(table) <- table$rdl_m1_sp
+    table <- as.data.frame(table[,-1])
+    table <- as.table(as.matrix(table))
+    
+    print(region)
+    row <- cbind(
+      year = year, 
+      level = 'LAD',
+      sublevel = LAD,
+      #https://stats.stackexchange.com/questions/81483/warning-in-r-chi-squared-approximation-may-be-incorrect
+      #http://rinterested.github.io/statistics/monte_carlo_chi_square.html
+      #https://stackoverflow.com/questions/52068531/how-work-the-p-value-simulation-in-the-chisq-test-and-fisher-test
+      chisq_Xsquared = chisq.test(table, simulate.p.value = TRUE)[[1]],
+      chisq_df = chisq.test(table, simulate.p.value = TRUE)[[2]],
+      chisq_pVal = chisq.test(table, simulate.p.value = TRUE)[[3]],
+      cramerV = cramerV(table)[[1]],
+      GoodmanKruskalGamma = GoodmanKruskalGamma(table)[[1]],
+      KendallTauA = KendallTauA(table)[[1]],
+      KendallTauB = KendallTauB(table)[[1]],
+      GoodmanKruskalTau = GoodmanKruskalTau(table)[[1]],
+      Lambda = Lambda(table)[[1]]
+    )
+    output <- rbind(output, row)
+  }
+}
+
+
+
+write.csv(output, file = './_derived-data/stabden_contigency_tables.csv')
+```
+
+
+
+
+```{r}
+
+
+test_PSD <- yearly_data[['1981']] %>%
+  group_by(rdl_m1_sp, rdl_pd ,rgn11nm) %>%
+  dplyr::summarise(count = n())
+
+year = 1981
+level = 'Wales'
+
+
+test <- subset(PSD, PSD$rgn11nm == level)
+#make the contigency table 
+test_table <- pivot_wider(test,
+                     id_cols = c("rgn11nm","rdl_m1_sp"),
+                     names_from = rdl_pd, 
+                     values_from = count)
+test_table <- as.table(as.matrix(test_table[,-1]))
+test_table
+
+
+row_LADs <- cbind(
+  #The fisher p-value=1 means there a no positive association between variables.
+  #Fisher, because small counts induced by outlier factors 
+  year = year, 
+  level = level,
+  fisher.test = fisher.test(test$rdl_m1_sp,test$rdl_pd)[[1]],
+  cramerV = cramerV(test$rdl_pd,test$rdl_m1_sp)[[1]],
+  GoodmanKruskalGamma = GoodmanKruskalGamma(test$rdl_m1_sp,test$rdl_pd)[[1]],
+  KendallTauA = KendallTauA(test$rdl_m1_sp,test$rdl_pd)[[1]],
+  KendallTauB = KendallTauB(test$rdl_m1_sp,test$rdl_pd)[[1]],
+  GoodmanKruskalTau = GoodmanKruskalTau(test$rdl_m1_sp,test$rdl_pd)[[1]],
+  Lambda = Lambda(test$rdl_m1_sp,test$rdl_pd)[[1]]
+)
+
+row_LADs
+
+```
+
