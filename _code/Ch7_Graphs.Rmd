@@ -12,7 +12,7 @@ library(ggplot2)
 library(scales)
 library(igraph)
 library(stringr)
-library("xlsx")
+library(xlsx)
 
 
 
@@ -78,181 +78,62 @@ graphs[['g81']] <- make_my_graph(stabden81)
 
 
 
-
-
-```{r}
-g <- graphs[['g11']]
-V(g)$eigenCentral_11 <- transitivity(g)
-
-#colnames(baskets.team) <- c(“1st”, “2nd”, “3th”, “4th”, “5th”, “6th”)
-
-output_transitivity <- matrix(ncol=1, nrow=4)
-output_transitivity_average <- matrix(ncol=1, nrow=4)
-i = 0
-
-for (g in graphs) {
-  i = i+1
-  output_transitivity[i,] <- transitivity(g)
-  output_transitivity_average[i,] <- transitivity(g, type = "average")
-}
-rm(i)
-
-row.names(output_transitivity) <- c('g11','g01','g91','g81')
-row.names(output_transitivity_average) <- c('g11','g01','g91','g81')
-
-```
-
-
-
 ```{r}
 i = 0
 years = c(2011,2001,1991,1981)
 
 
 for (g in graphs) {
-i = i+1
-
-V(g)$yr <- years[i]
-V(g)$yr_transitivity <- transitivity(g)
-V(g)$yr_transitivity_average <- transitivity(g, type = "average")
-V(g)$eigenCentral_11 <- eigen_centrality(g, directed = T, scale = TRUE, weights = E(g)$Frequency)[["vector"]]
-V(g)$page_rank_11 <- page_rank(g, directed = T, weights = E(g)$Frequency)[["vector"]]
-
-dt <- as_data_frame(g, what = "vertices")
-if( i == 1 ){
-  output <- dt[,c(-1)]
-}else{output <- rbind(output,dt)}  
-
-paste0(' Size: ', gsize(g) )
-print(paste0('Vertex Attr:',vertex_attr_names(g) ))
+  i = i+1
+  
+  V(g)$yr <- years[i]
+  V(g)$yr_transitivity <- transitivity(g)
+  V(g)$yr_transitivity_average <- transitivity(g, type = "average")
+  V(g)$eigenCentral_11 <- eigen_centrality(g, directed = T, scale = TRUE, weights = E(g)$Frequency)[["vector"]]
+  V(g)$page_rank_11 <- page_rank(g, directed = T, weights = E(g)$Frequency)[["vector"]]
+  V(g)$degreeT <- degree(g, v = V(g), mode = "total",loops = TRUE, normalized = FALSE) 
+  V(g)$degreeI <- degree(g, v = V(g), mode = "in",loops = TRUE, normalized = FALSE) 
+  V(g)$degreeO <- degree(g, v = V(g), mode = "out",loops = TRUE, normalized = FALSE) 
+  
+  dt <- as_data_frame(g, what = "vertices")
+  if( i == 1 ){
+    output <- dt
+  }else{
+    output <- rbind(output,dt)}  
+  
+  print(paste0(' Size: ', gsize(g) ))
+  print(paste0('Vertex Attr:',vertex_attr_names(g) ))
 }
 
 
-rm(dt)
-
-timestamp <- format(as.Date('20170215', format = '%Y%m%d'), "%Y%m%d")
-
-write.xlsx(output, paste0('./',timestamp ,'_output-GraphsStats.xlsx'), sheetName = "output", 
-  col.names = TRUE, row.names = F, append = FALSE)
+#timestamp <- format(Sys.Date(), "%Y%m%d")
+#write.xlsx(output, paste0('./_output-',timestamp ,'-GraphsStats.xlsx'), sheetName = "output", 
+#  col.names = TRUE, row.names = F, append = FALSE)
 ```
-
 
 ```{r}
-library("xlsx")
-timestamp <- format(as.Date('20170215', format = '%Y%m%d'), "%Y%m%d")
-
-write.xlsx(output, paste0('./',timestamp ,'_output-GraphsStats.xlsx'), sheetName = "output", 
-  col.names = TRUE, row.names = F, append = FALSE)
+i = 0
+#decompose.graph(graphs[["g11"]], mode = "strong")
+#components_strong <- decompose.graph(graphs[['g11']], mode = "strong")
 
 
+componenst_weak <- decompose.graph(graphs[['g11']], mode = "weak")
+
+SCC <- components(graphs[['g11']], mode = "strong")
+
+V(graphs[['g11']])$color <- rainbow(SCC$no)[SCC$membership]
+plot(graphs[['g11']], mark.groups = split(1:vcount(graphs[['g11']]), SCC$membership))
+
+
+for (g in graphs) {
+  i = i+1
+  
+  dt <- as_data_frame(g, what = "vertices")
+  if( i == 1 ){
+    output <- dt
+  }else{
+    output <- rbind(output,dt)}  
+  
+}
 ```
-
-
-```{r centralities}
-#https://stackoverflow.com/questions/48853610/average-clustering-coefficient-of-a-network-igraph
-
-now <- Sys.time()
-transitivity <- transitivity(g)
-transitivity_average <- transitivity(g, type = "average")
-time <- difftime(Sys.time(), now)
-
-
-
-now <- Sys.time()
-E(g)$eigenCentral_11 <- eigen_centrality(g, directed = T, scale = TRUE,
-  weights = E(g)$Frequency)[["vector"]]
-time <- difftime(Sys.time(), now)
-
-
-
-now <- Sys.time()
-E(g)$page_rank_11 <- page_rank(g, directed = T, weights = E(g)$Frequency)[["vector"]]
-time <- difftime(Sys.time(), now)
-
-
-```
-
-
-```{r}
-now <- Sys.time()
-cluster_leading_eigen <- cluster_leading_eigen(g, weights = E(g)$Frequency)
-time <- difftime(Sys.time(), now)
-#At community.c:1597 :This method was developed for undirected graphsAt arpack.c:776 :ARPACK solver failed to converge (1001 iterations, 0/1 eigenvectors converged)At arpack.c:776 :ARPACK solver failed to converge (1001 iterations, 0/1 eigenvectors converged)Error in cluster_leading_eigen(g, weights = E(g)$Frequency) :   At arpack.c:944 : ARPACK error, Maximum number of iterations reached
-
-
-
-#now <- Sys.time()
-#Will not work on 2011
-#https://igraph.org/r/doc/cluster_optimal.html
-#cluster_optimal <- cluster_optimal(g, weights = E(g)$Frequency)
-#time <- difftime(Sys.time(), now)
-
-
-#now <- Sys.time()
-#fast greedy community detection works for undirected graphs only, Unimplemented function call
-#https://igraph.org/r/doc/cluster_fast_greedy.html
-#cluster_fast_greedy <- cluster_fast_greedy(g, weights = E(g)$Frequency)
-#time <- difftime(Sys.time(), now)
-
-
-
-
-#now <- Sys.time()
-#works for undirected graphs only, Unimplemented function call
-#https://igraph.org/r/doc/cluster_louvain.html
-#cluster_louvain <- cluster_louvain(g, weights = E(g)$Frequency)
-#time <- difftime(Sys.time(), now)
-
-
-
-now <- Sys.time()
-#https://igraph.org/r/doc/cluster_walktrap.html
-cluster_walktrap <- cluster_walktrap(g, weights = E(g)$Frequency, steps = 88561300)
-time <- difftime(Sys.time(), now)
-```
-
-
-```{r}
-#####------------Subset
-# Which flows are in Camden
-subset<- which(V(g)$LAD == 'Wandsworth')
-# Creating a subgraph
-g1<- induced_subgraph(
-  graph = g,
-  vids  = subset #Numeric vector, the vertices of the original graph which will form the subgraph.
-)
-
-plot(g1)
-```
-
-
-```{r}
-#Subset all that go into a node:
-d = distances(g, to='1_V.Low-Trans*2_Low*Wandsworth*London', mode='out')
-V(g)[which(d >0) & V(g)$]
-```
-
-
-```{r}
-#Example
-#https://stackoverflow.com/questions/23682113/creating-subgraph-using-igraph-in-r
-sg1 <- decompose.graph(g1,mode="weak")
-neighverts <- unique(unlist(sapply(sg1,FUN=function(s){if(any(V(s)$name %in% subv)) V(s)$name else NULL})))
-g3 <- induced.subgraph(graph=g1,vids=neighverts)
-plot(g3)
-```
-
-
-```{r}
-#https://ourednik.info/maps/2018/09/21/create-a-subgraph-from-the-neighborhood-of-specific-vertices-in-igraph/
-nodes_of_interest <- c("Camden")
-selnodes <- V(g)[LAD %in% nodes_of_interest]
-#https://igraph.org/r/doc/ego.html
-selegoV <- ego(g, order=1, nodes = selnodes, mode = "all", mindist = 0)
-
-selegoG <- induced_subgraph(g,unlist(selegoV))
-plot(selegoG,vertex.label=V(selegoG)$name)
-```
-
-
 
