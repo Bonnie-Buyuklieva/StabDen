@@ -68,17 +68,19 @@ load("./_derived-data/flows_stabden81.RData")
 ```
 
 
-```{r grapsetup}
+```{r grapsetup ,cache=T}
 graphs <- list()
 graphs[['g11']] <- make_my_graph(stabden11)
 graphs[['g01']] <- make_my_graph(stabden01)
 graphs[['g91']] <- make_my_graph(stabden91)
 graphs[['g81']] <- make_my_graph(stabden81)
+
+rm(stabden11,stabden01,stabden91,stabden81)
 ```
 
 
 
-```{r}
+```{r }
 i = 0
 years = c(2011,2001,1991,1981)
 
@@ -94,6 +96,7 @@ for (g in graphs) {
   V(g)$degreeT <- degree(g, v = V(g), mode = "total",loops = TRUE, normalized = FALSE) 
   V(g)$degreeI <- degree(g, v = V(g), mode = "in",loops = TRUE, normalized = FALSE) 
   V(g)$degreeO <- degree(g, v = V(g), mode = "out",loops = TRUE, normalized = FALSE) 
+  
   
   dt <- as_data_frame(g, what = "vertices")
   if( i == 1 ){
@@ -112,28 +115,45 @@ for (g in graphs) {
 ```
 
 ```{r}
-i = 0
-#decompose.graph(graphs[["g11"]], mode = "strong")
-#components_strong <- decompose.graph(graphs[['g11']], mode = "strong")
+#https://stackoverflow.com/questions/51951713/computation-of-network-homophily
+#https://stackoverflow.com/questions/48822710/merge-edges-by-attribute-group-in-igraph-r
+#https://www.rdocumentation.org/packages/RDS/versions/0.9-2/topics/homophily.estimates
 
 
-componenst_weak <- decompose.graph(graphs[['g11']], mode = "weak")
+g <- graphs[['g11']]
+density <- edge_density(g)
+nodes <- length(V(g))
+#print(g)
 
-SCC <- components(graphs[['g11']], mode = "strong")
+c("name","Stab","Den","LAD")
+g <- delete_vertex_attr(g, "name")
+g <- delete_vertex_attr(g, "Stab" )
+g <- delete_vertex_attr(g, "Den" )
+g <- delete_vertex_attr(g, "LAD" )
 
-V(graphs[['g11']])$color <- rainbow(SCC$no)[SCC$membership]
-plot(graphs[['g11']], mark.groups = split(1:vcount(graphs[['g11']]), SCC$membership))
+names(vertex.attributes(g))
+assortativity_nominal(g, as.numeric(as.factor(  V(g)$RG )) , directed=F)
+
+V(g)$RGA <- NULL
+delete_vertex_attr(g, "RGA" )
+```
+
+0.2381657
+0.2295033
+0.3891316
+0.3124502
 
 
-for (g in graphs) {
-  i = i+1
-  
-  dt <- as_data_frame(g, what = "vertices")
-  if( i == 1 ){
-    output <- dt
-  }else{
-    output <- rbind(output,dt)}  
-  
-}
+
+```{r}
+#make an equivalent graph: with nodes = 3k, density = 0.09
+set.seed(2222)
+gg<-random.graph.game(3000,0.09,"gnp",directed=T)
+V(gg)$group<-sample(1:10,3000,replace=T)
+#will crash
+#V(gg)$group<-sample(head(LETTERS, 10),3000,replace=T)
+
+assortativity_nominal(gg, V(gg)$group, directed=F)
+#result, no problems: 0.0001380812
 ```
 
